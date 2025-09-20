@@ -176,4 +176,140 @@ class AdvancedAnalytics {
         description: 'Your farm shows low crop diversity. Consider adding these crops for better risk management:',
         suggestions: await this.suggestCrops(farmer.farms[0].location, historicalData),
         potentialImpact: {
-          riskReduction: '
+                    riskReduction: '35%',
+          incomeStability: '+25%',
+          soilHealth: 'Improved'
+        }
+      });
+    }
+    
+    // Market timing optimization
+    const marketAnalysis = await this.analyzeMarketTiming(historicalData);
+    if (marketAnalysis.suboptimalSales > 30) {
+      recommendations.push({
+        type: 'strategic',
+        priority: 'high',
+        category: 'market_timing',
+        title: 'Optimize Market Timing',
+        description: 'Analysis shows you could improve profits by timing your sales better',
+        suggestions: marketAnalysis.optimalTimings,
+        potentialImpact: {
+          revenueIncrease: `${marketAnalysis.potentialGain}%`,
+          implementation: 'Use cold storage or staggered harvesting'
+        }
+      });
+    }
+    
+    // Technology adoption
+    const techScore = await this.assessTechnologyAdoption(farmerId);
+    if (techScore < 0.6) {
+      recommendations.push({
+        type: 'strategic',
+        priority: 'medium',
+        category: 'technology',
+        title: 'Adopt Precision Agriculture Technologies',
+        description: 'Implementing modern farming technologies can significantly improve yields',
+        suggestions: [
+          {
+            technology: 'Drip Irrigation',
+            cost: '₹50,000 per hectare',
+            roi: '2 years',
+            benefits: 'Water savings: 40%, Yield increase: 20%'
+          },
+          {
+            technology: 'Soil Sensors',
+            cost: '₹15,000 per unit',
+            roi: '1 season',
+            benefits: 'Fertilizer optimization: 30% reduction'
+          }
+        ]
+      });
+    }
+    
+    return recommendations;
+  }
+
+  async generatePredictions(farmerId) {
+    const historicalData = await this.getHistoricalData(farmerId);
+    
+    // Load pre-trained models
+    const yieldModel = await tf.loadLayersModel('file://./models/yield_prediction/model.json');
+    const priceModel = await tf.loadLayersModel('file://./models/price_prediction/model.json');
+    
+    // Prepare features
+    const features = this.prepareFeatures(historicalData);
+    
+    // Make predictions
+    const yieldPredictions = await this.predictWithModel(yieldModel, features.yield);
+    const pricePredictions = await this.predictWithModel(priceModel, features.price);
+    
+    // Generate scenarios
+    const scenarios = {
+      optimistic: this.generateScenario(yieldPredictions, pricePredictions, 1.2),
+      realistic: this.generateScenario(yieldPredictions, pricePredictions, 1.0),
+      pessimistic: this.generateScenario(yieldPredictions, pricePredictions, 0.8)
+    };
+    
+    return {
+      yield: {
+        nextSeason: yieldPredictions.nextSeason,
+        confidence: yieldPredictions.confidence,
+        factors: yieldPredictions.influencingFactors
+      },
+      price: {
+        forecast: pricePredictions.forecast,
+        volatility: pricePredictions.volatility,
+        bestSellingWindow: pricePredictions.optimalWindow
+      },
+      scenarios,
+      recommendations: this.generatePredictiveRecommendations(scenarios)
+    };
+  }
+
+  calculateWeatherYieldCorrelation(weatherData, yieldData) {
+    // Group data by time periods
+    const periods = this.groupByPeriods(weatherData, yieldData);
+    
+    const correlations = {
+      rainfall: this.pearsonCorrelation(
+        periods.map(p => p.avgRainfall),
+        periods.map(p => p.avgYield)
+      ),
+      temperature: this.pearsonCorrelation(
+        periods.map(p => p.avgTemperature),
+        periods.map(p => p.avgYield)
+      ),
+      humidity: this.pearsonCorrelation(
+        periods.map(p => p.avgHumidity),
+        periods.map(p => p.avgYield)
+      )
+    };
+    
+    return {
+      correlations,
+      interpretation: this.interpretCorrelations(correlations),
+      criticalThresholds: this.identifyCriticalThresholds(periods)
+    };
+  }
+
+  pearsonCorrelation(x, y) {
+    const n = x.length;
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((total, xi, i) => total + xi * y[i], 0);
+    const sumX2 = x.reduce((total, xi) => total + xi * xi, 0);
+    const sumY2 = y.reduce((total, yi) => total + yi * yi, 0);
+    
+    const correlation = (n * sumXY - sumX * sumY) / 
+      Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+    
+    return {
+      value: correlation,
+      strength: Math.abs(correlation) > 0.7 ? 'strong' : 
+                Math.abs(correlation) > 0.4 ? 'moderate' : 'weak',
+      direction: correlation > 0 ? 'positive' : 'negative'
+    };
+  }
+}
+
+module.exports = new AdvancedAnalytics();
