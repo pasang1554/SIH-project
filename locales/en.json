@@ -1,0 +1,29 @@
+
+{
+  "weather": {
+    "alert": "Weather Alert: {{condition}} expected",
+    "temperature": "Temperature: {{temp}}°C",
+    "humidity": "Humidity: {{humidity}}%",
+    "rain_expected": "{{percentage}}% chance of rain today"
+  },
+  "irrigation": {
+    "reminder": "Irrigation time - Your {{crop}} needs water",
+    "optimal_time": "Best time to irrigate: {{time}}",
+    "water_saved": "{{liters}} liters of water saved this week"
+  },
+  "pest": {
+    "warning": "Warning: {{pest}} outbreak possible",
+    "prevention": "Prevention: {{method}}",
+    "treatment": "Treatment: {{treatment}}"
+  },
+  "harvest": {
+    "advice": "Harvest Advisory",
+    "ready": "Your {{crop}} is ready for harvest",
+    "optimal_date": "Optimal harvest date: {{date}}"
+  },
+  "market": {
+    "update": "Market Update",
+    "price": "{{crop}} price: ₹{{price}}/quintal",
+    "trend": "Price trend: {{trend}}"
+  }
+}

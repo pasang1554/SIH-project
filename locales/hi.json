@@ -1,0 +1,29 @@
+
+{
+  "weather": {
+    "alert": "मौसम चेतावनी: {{condition}} की संभावना है",
+    "temperature": "तापमान: {{temp}}°C",
+    "humidity": "नमी: {{humidity}}%",
+    "rain_expected": "आज {{percentage}}% बारिश की संभावना"
+  },
+  "irrigation": {
+    "reminder": "सिंचाई का समय - आपके {{crop}} को पानी की आवश्यकता है",
+    "optimal_time": "सिंचाई का सबसे अच्छा समय: {{time}}",
+    "water_saved": "इस सप्ताह {{liters}} लीटर पानी की बचत"
+  },
+  "pest": {
+    "warning": "चेतावनी: {{pest}} का प्रकोप संभव",
+    "prevention": "रोकथाम: {{method}}",
+    "treatment": "उपचार: {{treatment}}"
+  },
+  "harvest": {
+    "advice": "फसल कटाई की सलाह",
+    "ready": "आपका {{crop}} कटाई के लिए तैयार है",
+    "optimal_date": "कटाई की सर्वोत्तम तिथि: {{date}}"
+  },
+  "market": {
+    "update": "बाजार अपडेट",
+    "price": "{{crop}} का मूल्य: ₹{{price}}/क्विंटल",
+    "trend": "मूल्य प्रवृत्ति: {{trend}}"
+  }
+}
