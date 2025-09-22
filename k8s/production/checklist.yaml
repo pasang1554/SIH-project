@@ -1,0 +1,62 @@
+# k8s/production/checklist.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: production-checklist
+  namespace: production
+data:
+  checklist.md: |
+    # Production Deployment Checklist
+    
+    ## Pre-Deployment
+    - [ ] All tests passing (unit, integration, e2e)
+    - [ ] Security scan completed (no critical vulnerabilities)
+    - [ ] Performance benchmarks met
+    - [ ] Database migrations tested
+    - [ ] Rollback plan documented
+    - [ ] Stakeholders notified
+    
+    ## Infrastructure
+    - [ ] Kubernetes cluster healthy
+    - [ ] Resource limits configured
+    - [ ] Auto-scaling policies active
+    - [ ] Network policies enforced
+    - [ ] SSL certificates valid
+    - [ ] DNS records configured
+    
+    ## Monitoring
+    - [ ] Prometheus targets up
+    - [ ] Grafana dashboards configured
+    - [ ] Alert rules active
+    - [ ] Log aggregation working
+    - [ ] APM configured
+    - [ ] Error tracking enabled
+    
+    ## Security
+    - [ ] Secrets rotated
+    - [ ] RBAC policies applied
+    - [ ] Pod security policies enforced
+    - [ ] Network segmentation verified
+    - [ ] WAF rules updated
+    - [ ] Vulnerability scanning scheduled
+    
+    ## Data
+    - [ ] Database backups verified
+    - [ ] Disaster recovery tested
+    - [ ] Data retention policies applied
+    - [ ] GDPR compliance checked
+    
+    ## Performance
+    - [ ] CDN configured
+    - [ ] Cache headers optimized
+    - [ ] Database indexes optimized
+    - [ ] Image optimization enabled
+    - [ ] API rate limiting configured
+    
+    ## Post-Deployment
+    - [ ] Smoke tests passed
+    - [ ] Health checks green
+    - [ ] Metrics baseline established
+    - [ ] Documentation updated
+    - [ ] Team trained
+    - [ ] Support contacts updated

@@ -188,4 +188,112 @@ class SystemOptimizer {
       currentWorker = (currentWorker + 1) % workers.length;
       return worker;
     };
+        // Implement sticky sessions for WebSocket connections
+    this.setupStickySession();
+  }
+
+  setupStickySession() {
+    const net = require('net');
+    const farmhash = require('farmhash');
+    
+    if (cluster.isMaster) {
+      const server = net.createServer({ pauseOnConnect: true }, (connection) => {
+        // Extract IP for sticky session
+        const ip = connection.remoteAddress;
+        const workerIndex = farmhash.hash32(ip) % Object.keys(cluster.workers).length;
+        const worker = Object.values(cluster.workers)[workerIndex];
+        
+        worker.send('sticky-session:connection', connection);
+      });
+      
+      server.listen(process.env.PORT || 5000);
+    }
+  }
+
+  async performHealthCheck() {
+    const checks = {
+      database: await this.checkDatabaseHealth(),
+      redis: await this.checkRedisHealth(),
+      storage: await this.checkStorageHealth(),
+      apis: await this.checkExternalAPIs(),
+      memory: this.checkMemoryHealth(),
+      cpu: this.checkCPUHealth()
+    };
+    
+    const overall = Object.values(checks).every(check => check.status === 'healthy');
+    
+    return {
+      status: overall ? 'healthy' : 'degraded',
+      checks,
+      timestamp: new Date()
+    };
+  }
+
+  async checkDatabaseHealth() {
+    try {
+      const start = Date.now();
+      await mongoose.connection.db.admin().ping();
+      const latency = Date.now() - start;
+      
+      return {
+        status: latency < 100 ? 'healthy' : 'slow',
+        latency: `${latency}ms`
+      };
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        error: error.message
+      };
+    }
+  }
+
+  optimizeImageDelivery() {
+    const sharp = require('sharp');
+    
+    return async (req, res, next) => {
+      if (!req.url.match(/\.(jpg|jpeg|png|webp)$/i)) {
+        return next();
+      }
+      
+      const width = parseInt(req.query.w) || null;
+      const height = parseInt(req.query.h) || null;
+      const quality = parseInt(req.query.q) || 85;
+      const format = req.query.f || 'webp';
+      
+      try {
+        const imagePath = path.join(__dirname, '../public', req.url);
+        
+        let transform = sharp(imagePath);
+        
+        if (width || height) {
+          transform = transform.resize(width, height, {
+            fit: 'inside',
+            withoutEnlargement: true
+          });
+        }
+        
+        transform = transform[format]({ quality });
+        
+        const buffer = await transform.toBuffer();
+        
+        res.set('Content-Type', `image/${format}`);
+        res.set('Cache-Control', 'public, max-age=31536000');
+        res.send(buffer);
+      } catch (error) {
+        next();
+      }
+    };
+  }
+}
+
+// Initialize system optimizer
+const optimizer = new SystemOptimizer();
+
+// Export optimization middleware
+module.exports = {
+  optimizer,
+  cacheMiddleware: optimizer.cacheMiddleware.bind(optimizer),
+  imageOptimizer: optimizer.optimizeImageDelivery(),
+  healthCheck: optimizer.performHealthCheck.bind(optimizer)
+};
   

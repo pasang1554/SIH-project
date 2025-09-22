@@ -1,0 +1,124 @@
+# k8s/production/backup.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: production
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mongodb-backup
+            image: mongo:5.0
+            command:
+            - /bin/bash
+            - -c
+            - |
+              DATE=$(date +%Y%m%d_%H%M%S)
+              mongodump --uri="$MONGODB_URI" --archive=/backup/mongodb-$DATE.gz --gzip
+              
+              # Upload to S3
+              aws s3 cp /backup/mongodb-$DATE.gz s3://$BACKUP_BUCKET/mongodb/$DATE/
+              
+              # Clean up old backups (keep last 30 days)
+              find /backup -name "*.gz" -mtime +30 -delete
+            env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: uri
+            - name: BACKUP_BUCKET
+              value: agriplatform-backups
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            volumeMounts:
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: backup
+            persistentVolumeClaim:
+              claimName: backup-pvc
+          restartPolicy: OnFailure
+
+---
+# Disaster Recovery Script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-scripts
+  namespace: production
+data:
+  restore.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Starting disaster recovery process..."
+    
+    # Function to restore MongoDB
+    restore_mongodb() {
+      echo "Restoring MongoDB from backup..."
+      LATEST_BACKUP=$(aws s3 ls s3://$BACKUP_BUCKET/mongodb/ | sort | tail -n 1 | awk '{print $4}')
+      
+      if [ -z "$LATEST_BACKUP" ]; then
+        echo "No backup found!"
+        exit 1
+      fi
+      
+      aws s3 cp s3://$BACKUP_BUCKET/mongodb/$LATEST_BACKUP /tmp/mongodb-backup.gz
+      mongorestore --uri="$MONGODB_URI" --archive=/tmp/mongodb-backup.gz --gzip --drop
+      
+      echo "MongoDB restored successfully"
+    }
+    
+    # Function to restore Redis
+    restore_redis() {
+      echo "Restoring Redis from backup..."
+      LATEST_REDIS_BACKUP=$(aws s3 ls s3://$BACKUP_BUCKET/redis/ | sort | tail -n 1 | awk '{print $4}')
+      
+      if [ -n "$LATEST_REDIS_BACKUP" ]; then
+        aws s3 cp s3://$BACKUP_BUCKET/redis/$LATEST_REDIS_BACKUP /tmp/redis-backup.rdb
+        redis-cli -h $REDIS_HOST -a $REDIS_PASSWORD --rdb /tmp/redis-backup.rdb
+        echo "Redis restored successfully"
+      fi
+    }
+    
+    # Function to restore files
+    restore_files() {
+      echo "Restoring uploaded files..."
+      aws s3 sync s3://$BACKUP_BUCKET/files/ /data/uploads/
+      echo "Files restored successfully"
+    }
+    
+    # Main execution
+    case "$1" in
+      mongodb)
+        restore_mongodb
+        ;;
+      redis)
+        restore_redis
+        ;;
+      files)
+        restore_files
+        ;;
+      all)
+        restore_mongodb
+        restore_redis
+        restore_files
+        ;;
+      *)
+        echo "Usage: $0 {mongodb|redis|files|all}"
+        exit 1
+        ;;
+    esac
